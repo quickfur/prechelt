@@ -172,7 +172,10 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
         if (suffix.empty)
         {
             // Found a match, print result
-            put(sink, format("%s: %s", phoneNumber, result));
+            foreach (word; node.words)
+            {
+                put(sink, format("%s: %s %s", phoneNumber, result, word));
+            }
             return;
         }
 
