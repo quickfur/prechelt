@@ -160,7 +160,7 @@ ENDDICT".splitLines);
 void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
     if (isOutputRange!(W, string))
 {
-    void impl(Trie node, const(char)[] suffix, string result)
+    void impl(Trie node, const(char)[] suffix, string[] path)
     {
         if (node is null)
             return;
@@ -174,7 +174,8 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
             // Found a match, print result
             foreach (word; node.words)
             {
-                put(sink, format("%s: %s %s", phoneNumber, result, word));
+                put(sink, format("%s: %-(%s %)", phoneNumber,
+                                 path.chain(only(word))));
             }
             return;
         }
@@ -183,14 +184,13 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
         {
             // Found a matching word, try to match the rest of the phone
             // number.
-            auto delim = (result.empty) ? "" : " ";
-            impl(dict, suffix, result ~ delim ~ word);
+            impl(dict, suffix, path ~ word);
         }
 
-        impl(node.edges[suffix[0] - '0'], suffix[1 .. $], result);
+        impl(node.edges[suffix[0] - '0'], suffix[1 .. $], path);
     }
 
-    impl(dict, phoneNumber[], "");
+    impl(dict, phoneNumber[], []);
 }
 
 void encodePhoneNumbers(R,W)(R input, Trie dict, W sink)
@@ -245,7 +245,7 @@ ENDDICT".splitLines);
     auto app = appender!(string[]);
     encodePhoneNumbers(input, dict, (string match) { app.put(match); });
 
-    writeln(app.data);
+    writefln("%-(%s\n%)", app.data);
 }
 
 int main(string[] args)
