@@ -192,11 +192,9 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
         {
             // Found a matching word, try to match the rest of the phone
             // number.
+            ret = true;
             if (impl(dict, suffix, path ~ word, true))
-            {
                 allowDigit = false;
-                ret = true;
-            }
         }
 
         if (impl(node.edges[suffix[0] - '0'], suffix[1 .. $], path, false))
@@ -293,7 +291,7 @@ ENDDICT".splitLines);
     auto app = appender!(string[]);
     encodePhoneNumbers(input, dict, (string match) { app.put(match); });
 
-    //writefln("%-(%s\n%)", app.data);
+    //writefln("\n%-(%s\n%)", app.data);
     assert(app.data.sort.release == [
         "04824: 0 Tor 4",
         "04824: 0 Torf",
@@ -315,6 +313,7 @@ unittest
     auto dict = loadDictionary(q"ENDDICT
 Bias
 ja
+Mai
 Reck
 Weib
 USA
@@ -322,16 +321,22 @@ ENDDICT".splitLines);
 
     auto input = [
         "/7-357653152/0677-",
+        "/7-3576-",
         "/8-",
+        "1556/0",
     ];
 
     auto app = appender!(string[]);
     encodePhoneNumbers(input, dict, (string match) { app.put(match); });
 
+    //writefln("\n%-(%s\n%)", app.data);
     assert(app.data.sort.release == [
         "/7-357653152/0677-: USA Bias ja Reck 7",
         "/7-357653152/0677-: USA Bias ja Weib 7",
         "/8-: 8",
+
+        /* Note: 1556/0 should NOT encode as "1 Mai 0" because the initial "15"
+         * matches "ja", thus excluding a digit in that position. */
     ]);
 }
 
