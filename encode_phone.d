@@ -226,7 +226,14 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
         return ret;
     }
 
-    impl(dict, phoneNumber[], [], true);
+    // Trim trailing non-digits from phone number
+    auto suffix = phoneNumber[];
+    while (!suffix.empty && (suffix[$-1] < '0' || suffix[$-1] > '9'))
+    {
+        suffix = suffix[0 .. $-1];
+    }
+
+    impl(dict, suffix, [], true);
 }
 
 /**
@@ -300,6 +307,31 @@ ENDDICT".splitLines);
         "4824: fort",
         "5624-82: Mix Tor",
         "5624-82: mir Tor",
+    ]);
+}
+
+unittest
+{
+    auto dict = loadDictionary(q"ENDDICT
+Bias
+ja
+Reck
+Weib
+USA
+ENDDICT".splitLines);
+
+    auto input = [
+        "/7-357653152/0677-",
+        "/8-",
+    ];
+
+    auto app = appender!(string[]);
+    encodePhoneNumbers(input, dict, (string match) { app.put(match); });
+
+    assert(app.data.sort.release == [
+        "/7-357653152/0677-: USA Bias ja Reck 7",
+        "/7-357653152/0677-: USA Bias ja Weib 7",
+        "/8-: 8",
     ]);
 }
 
