@@ -205,8 +205,11 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
             // matches, and we may encode it as a single digit.
             auto nextSuffix = suffix[1 .. $];
             if (nextSuffix.empty)
+            {
                 put(sink, format("%s: %-(%s %)", phoneNumber,
                                  path.chain(suffix[0 .. 1].only)));
+                ret = true;
+            }
             else
             {
                 if (impl(dict, suffix[1 .. $], path ~ [ suffix[0] ], false))
@@ -271,7 +274,21 @@ ENDDICT".splitLines);
     auto app = appender!(string[]);
     encodePhoneNumbers(input, dict, (string match) { app.put(match); });
 
-    writefln("%-(%s\n%)", app.data);
+    //writefln("%-(%s\n%)", app.data);
+    assert(app.data.sort.release == [
+        "04824: 0 Tor 4",
+        "04824: 0 Torf",
+        "04824: 0 fort",
+        "10/783--5: je Bo\" da",
+        "10/783--5: je bo\"s 5",
+        "10/783--5: neu o\"d 5",
+        "381482: so 1 Tor",
+        "4824: Tor 4",
+        "4824: Torf",
+        "4824: fort",
+        "5624-82: Mix Tor",
+        "5624-82: mir Tor",
+    ]);
 }
 
 int main(string[] args)
