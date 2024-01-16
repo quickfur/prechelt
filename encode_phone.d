@@ -160,14 +160,15 @@ ENDDICT".splitLines);
     ]);
 }
 
+alias MatchCallback = void delegate(const(char)[] phone, const(char)[] match);
+
 /**
  * Find all encodings of the given phoneNumber according to the given
  * dictionary, and write each encoding to the given sink.
  */
-void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
-    if (isOutputRange!(W, string))
+void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
 {
-    bool impl(Trie node, const(char)[] suffix, string[] path, bool allowDigit)
+    bool impl(Trie node, const(char)[] suffix, string path, bool allowDigit)
     {
         if (node is null)
             return false;
@@ -181,8 +182,7 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
             // Found a match, print result
             foreach (word; node.words)
             {
-                put(sink, format("%s: %-(%s %)", phoneNumber,
-                                 path.chain(only(word))));
+                cb(phoneNumber, (path.empty ? "" : path ~ " ") ~ word);
             }
             return !node.words.empty;
         }
@@ -193,7 +193,8 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
             // Found a matching word, try to match the rest of the phone
             // number.
             ret = true;
-            if (impl(dict, suffix, path ~ word, true))
+            if (impl(dict, suffix, (path.empty ? "" : path ~ " ") ~ word,
+                     true))
                 allowDigit = false;
         }
 
@@ -211,13 +212,14 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
             auto nextSuffix = suffix[1 .. $];
             if (nextSuffix.empty)
             {
-                put(sink, format("%s: %-(%s %)", phoneNumber,
-                                 path.chain(suffix[0 .. 1].only)));
+                cb(phoneNumber, path ~ ((path.empty ? "" : " ") ~ suffix[0 .. 1]));
                 ret = true;
             }
             else
             {
-                if (impl(dict, suffix[1 .. $], path ~ [ suffix[0] ], false))
+                if (impl(dict, suffix[1 .. $],
+                         (path.empty ? "" : path ~ " ") ~ suffix[0],
+                         false))
                     ret = true;
             }
         }
@@ -238,13 +240,12 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
  * Encode the given input range of phone numbers according to the given
  * dictionary, writing the output to the given sink.
  */
-void encodePhoneNumbers(R,W)(R input, Trie dict, W sink)
-    if (isInputRange!R & is(ElementType!R : const(char)[]) &&
-        isOutputRange!(W, string))
+void encodePhoneNumbers(R)(R input, Trie dict, MatchCallback cb)
+    if (isInputRange!R & is(ElementType!R : const(char)[]))
 {
     foreach (line; input)
     {
-        findMatches(dict, line, sink);
+        findMatches(dict, line, cb);
     }
 }
 
@@ -289,7 +290,9 @@ ENDDICT".splitLines);
     ];
 
     auto app = appender!(string[]);
-    encodePhoneNumbers(input, dict, (string match) { app.put(match); });
+    encodePhoneNumbers(input, dict, (phone, match) {
+        app.put(format("%s: %s", phone, match));
+    });
 
     //writefln("\n%-(%s\n%)", app.data);
     assert(app.data.sort.release == [
@@ -327,7 +330,9 @@ ENDDICT".splitLines);
     ];
 
     auto app = appender!(string[]);
-    encodePhoneNumbers(input, dict, (string match) { app.put(match); });
+    encodePhoneNumbers(input, dict, (phone, match) {
+        app.put(format("%s: %s", phone, match));
+    });
 
     //writefln("\n%-(%s\n%)", app.data);
     assert(app.data.sort.release == [
@@ -372,13 +377,13 @@ int main(string[] args)
     if (countOnly)
     {
         size_t count;
-        encodePhoneNumbers(input.byLine, dict, (string match) { count++; });
+        encodePhoneNumbers(input.byLine, dict, (phone, match) { count++; });
         writefln("Number of solutions: %d", count);
     }
     else
     {
-        encodePhoneNumbers(input.byLine, dict, (string match) {
-            writeln(match);
+        encodePhoneNumbers(input.byLine, dict, (phone, match) {
+            writefln("%s: %s", phone, match);
         });
     }
 
