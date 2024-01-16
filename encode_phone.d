@@ -168,7 +168,49 @@ alias MatchCallback = void delegate(const(char)[] phone, const(char)[] match);
  */
 void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
 {
-    bool impl(Trie node, const(char)[] suffix, string path, bool allowDigit)
+    /*
+     * Optimization: use a common buffer for constructing the output string,
+     * instead of using string append, which allocates many new strings.
+     *
+     * The `path` parameter passed to .impl is always a slice of .buffer,
+     * either its current instance or a previous instance left over from a
+     * buffer reallocation. As such, its contents are always an initial segment
+     * of whatever's in .buffer, so appending is just a matter of writing to
+     * the tail end of the buffer and returning a slice of the new buffer.
+     *
+     * The fact that .path higher up the call tree may be pointing to old
+     * versions of .buffer is not a problem; contentwise they are always an
+     * initial segment of the current .buffer, so any subsequent appends will
+     * copy the new word to the right place in the current .buffer and return a
+     * slice to it, and the contents will always be consistent.
+     */
+    static char[] buffer;
+    const(char)[] appendPath(const(char)[] path, const(char)[] word)
+    {
+        // Assumption: path is an initial segment of buffer (either its current
+        // incarnation or a pre-reallocated initial copy). So we don't need to
+        // copy the initial segment, just whatever needs to be appended.
+        if (path.length == 0)
+        {
+            auto newlen = word.length;
+            if (buffer.length < newlen)
+                buffer.length = newlen;
+            buffer[0 .. newlen] = word[];
+            return buffer[0 .. newlen];
+        }
+        else
+        {
+            auto newlen = path.length + 1 + word.length;
+            if (buffer.length < newlen)
+                buffer.length = newlen;
+            buffer[path.length] = ' ';
+            buffer[path.length + 1 .. newlen] = word[];
+            return buffer[0 .. newlen];
+        }
+    }
+
+    bool impl(Trie node, const(char)[] suffix, const(char)[] path,
+              bool allowDigit)
     {
         if (node is null)
             return false;
@@ -182,7 +224,7 @@ void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
             // Found a match, print result
             foreach (word; node.words)
             {
-                cb(phoneNumber, (path.empty ? "" : path ~ " ") ~ word);
+                cb(phoneNumber, appendPath(path, word));
             }
             return !node.words.empty;
         }
@@ -193,8 +235,7 @@ void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
             // Found a matching word, try to match the rest of the phone
             // number.
             ret = true;
-            if (impl(dict, suffix, (path.empty ? "" : path ~ " ") ~ word,
-                     true))
+            if (impl(dict, suffix, appendPath(path, word), true))
                 allowDigit = false;
         }
 
@@ -212,14 +253,13 @@ void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
             auto nextSuffix = suffix[1 .. $];
             if (nextSuffix.empty)
             {
-                cb(phoneNumber, path ~ ((path.empty ? "" : " ") ~ suffix[0 .. 1]));
+                cb(phoneNumber, appendPath(path, suffix[0 .. 1]));
                 ret = true;
             }
             else
             {
                 if (impl(dict, suffix[1 .. $],
-                         (path.empty ? "" : path ~ " ") ~ suffix[0],
-                         false))
+                         appendPath(path, suffix[0 .. 1]), false))
                     ret = true;
             }
         }
@@ -233,7 +273,7 @@ void findMatches(Trie dict, const(char)[] phoneNumber, MatchCallback cb)
         suffix = suffix[0 .. $-1];
     }
 
-    impl(dict, suffix, [], true);
+    impl(dict, suffix, buffer[0 .. 0], true);
 }
 
 /**
