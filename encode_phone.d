@@ -160,10 +160,10 @@ ENDDICT".splitLines);
 void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
     if (isOutputRange!(W, string))
 {
-    void impl(Trie node, const(char)[] suffix, string[] path)
+    bool impl(Trie node, const(char)[] suffix, string[] path, bool allowDigit)
     {
         if (node is null)
-            return;
+            return false;
 
         // Ignore non-digit characters in phone number
         while (!suffix.empty && (suffix[0] < '0' || suffix[0] > '9'))
@@ -177,20 +177,46 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
                 put(sink, format("%s: %-(%s %)", phoneNumber,
                                  path.chain(only(word))));
             }
-            return;
+            return !node.words.empty;
         }
 
+        bool ret;
         foreach (word; node.words)
         {
             // Found a matching word, try to match the rest of the phone
             // number.
-            impl(dict, suffix, path ~ word);
+            if (impl(dict, suffix, path ~ word, true))
+            {
+                allowDigit = false;
+                ret = true;
+            }
         }
 
-        impl(node.edges[suffix[0] - '0'], suffix[1 .. $], path);
+        if (impl(node.edges[suffix[0] - '0'], suffix[1 .. $], path, false))
+        {
+            allowDigit = false;
+            ret = true;
+        }
+
+        if (allowDigit)
+        {
+            // If we got here, it means that if we take the current node as the
+            // next word choice, then the following digit will have no further
+            // matches, and we may encode it as a single digit.
+            auto nextSuffix = suffix[1 .. $];
+            if (nextSuffix.empty)
+                put(sink, format("%s: %-(%s %)", phoneNumber,
+                                 path.chain(suffix[0 .. 1].only)));
+            else
+            {
+                if (impl(dict, suffix[1 .. $], path ~ [ suffix[0] ], false))
+                    ret = true;
+            }
+        }
+        return ret;
     }
 
-    impl(dict, phoneNumber[], []);
+    impl(dict, phoneNumber[], [], true);
 }
 
 void encodePhoneNumbers(R,W)(R input, Trie dict, W sink)
