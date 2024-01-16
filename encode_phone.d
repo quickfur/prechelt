@@ -3,6 +3,9 @@
  */
 import std;
 
+/**
+ * Table of digit mappings.
+ */
 static immutable ubyte[dchar] digitOf;
 shared static this()
 {
@@ -64,6 +67,9 @@ class Trie
         insert(word, word[]);
     }
 
+    /**
+     * Iterate over all words stored in this Trie.
+     */
     void foreachEntry(void delegate(string path, string word) cb)
     {
         void impl(Trie node, string path = "")
@@ -96,6 +102,7 @@ Trie loadDictionary(R)(R lines)
     return result;
 }
 
+///
 unittest
 {
     auto dict = loadDictionary(q"ENDDICT
@@ -222,6 +229,10 @@ void findMatches(W)(Trie dict, const(char)[] phoneNumber, W sink)
     impl(dict, phoneNumber[], [], true);
 }
 
+/**
+ * Encode the given input range of phone numbers according to the given
+ * dictionary, writing the output to the given sink.
+ */
 void encodePhoneNumbers(R,W)(R input, Trie dict, W sink)
     if (isInputRange!R & is(ElementType!R : const(char)[]) &&
         isOutputRange!(W, string))
@@ -232,6 +243,7 @@ void encodePhoneNumbers(R,W)(R input, Trie dict, W sink)
     }
 }
 
+///
 unittest
 {
     auto dict = loadDictionary(q"ENDDICT
@@ -291,6 +303,9 @@ ENDDICT".splitLines);
     ]);
 }
 
+/**
+ * Program entry point.
+ */
 int main(string[] args)
 {
     File input = stdin;
