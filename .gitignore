@@ -1,3 +1,5 @@
 .*.swp
 *.o
 encode_phone
+ext/
+input.txt

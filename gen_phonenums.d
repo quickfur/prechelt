@@ -11,6 +11,9 @@ void main(string[] args)
     if (args.length > 1)
         n = args[1].to!size_t;
 
+    if (args.length > 2)
+        maxlen = args[2].to!size_t;
+
     foreach (_; 0 .. n)
     {
         static immutable chars = "0123456789/-";
