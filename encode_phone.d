@@ -391,26 +391,27 @@ ENDDICT".splitLines);
 int main(string[] args)
 {
     File input = stdin;
+    auto dictfile = "tests/words.txt";
     bool countOnly;
-
-    auto info = getopt(args,
-        "c|count", "Count solutions only", &countOnly,
-    );
 
     int showHelp()
     {
-        stderr.writefln("Usage: %s [options] <dictfile> [<inputfile>]",
+        stderr.writefln("Usage: %s <count|print> <dictfile> [<inputfile>]",
                         args[0]);
-        defaultGetoptPrinter("", info.options);
         return 1;
     }
 
-    if (info.helpWanted || args.length < 2)
-        return showHelp();
-
-    auto dictfile = args[1];
+    if (args.length > 1)
+    {
+        if (args[1] == "-h")
+            return showHelp();
+        else if (args[1] == "count")
+            countOnly = true;
+    }
     if (args.length > 2)
-        input = File(args[2]);
+        dictfile = args[2];
+    if (args.length > 3)
+        input = File(args[3]);
 
     Trie dict = loadDictionary(File(dictfile).byLine);
 
