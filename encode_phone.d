@@ -419,7 +419,7 @@ int main(string[] args)
     {
         size_t count;
         encodePhoneNumbers(input.byLine, dict, (phone, match) { count++; });
-        writefln("Number of solutions: %d", count);
+        writefln("%d", count);
     }
     else
     {
